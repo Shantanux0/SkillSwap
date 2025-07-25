@@ -125,7 +125,7 @@ public class AuthServiceImpl implements ProfileService {
     }
 
     @Override
-    public void verifyOtp(String otp, String email) {
+    public void verifyOtp(String email, String otp) {
         UserAuthEntity existingUser = userAuthRepo.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: "+email));
         if (existingUser.getVerifyOtp() == null || !existingUser.getVerifyOtp().equals(otp)) {
@@ -141,8 +141,8 @@ public class AuthServiceImpl implements ProfileService {
         existingUser.setVerifyOtpExpireAt(0L);
 
         userAuthRepo.save(existingUser);
-
     }
+
 
     private ProfileResponse convertToProfileResponse(UserAuthEntity newProfile) {
         return ProfileResponse.builder()

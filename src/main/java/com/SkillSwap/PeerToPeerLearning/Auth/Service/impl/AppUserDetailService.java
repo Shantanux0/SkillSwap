@@ -20,10 +20,9 @@ public class AppUserDetailService  implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        UserAuthEntity existingUser = authRepo
-                .findByEmail(email)
-                .orElseThrow(()-> new UsernameNotFoundException("Email not found for the email: "+email));
-
+        UserAuthEntity existingUser = authRepo.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Email not found for the email: " + email));
         return new User(existingUser.getEmail(), existingUser.getPassword(), new ArrayList<>());
     }
+
 }
