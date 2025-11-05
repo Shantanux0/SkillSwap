@@ -35,27 +35,30 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-            http.cors(Customizer.withDefaults())
-                    .csrf(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(auth -> auth
-                            // Public Endpoints (Adjust according to actual path in controllers)
-                            .requestMatchers("/login", "/register",
-                                    "/send-reset-otp", "/reset-password",
-                                    "/logout", "/send-otp", "/verify-otp")
-                            .permitAll()
+        http.cors(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        // Public Endpoints (Adjust according to actual path in controllers)
+                        .requestMatchers("/login", "/register",
+                                "/send-reset-otp", "/reset-password",
+                                "/logout", "/send-otp", "/verify-otp")
+                        .permitAll()
 
-                            // Profile Module
-                            .requestMatchers("/api/profile/**").authenticated()
+                        // Profile Module
+                        .requestMatchers("/api/profile/**").authenticated()
 
-                            // Any other endpoints
-                            .anyRequest().authenticated()
-                    )
-                    .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                    .logout(AbstractHttpConfigurer::disable)
-                    .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
-                    .exceptionHandling(ex -> ex.authenticationEntryPoint(customAuthenticationEntryPoint));
+                        // Resume Module (NEW)
+                        .requestMatchers("/api/resume/**").authenticated()
 
-            return http.build();
+                        // Any other endpoints
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .logout(AbstractHttpConfigurer::disable)
+                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(customAuthenticationEntryPoint));
+
+        return http.build();
 
 
     }
