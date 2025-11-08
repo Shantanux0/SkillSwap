@@ -1,0 +1,312 @@
+package com.SkillSwap.PeerToPeerLearning.P4testPortal.Service.IMPL;
+
+import com.SkillSwap.PeerToPeerLearning.P1Auth.Entity.UserAuthEntity;
+import com.SkillSwap.PeerToPeerLearning.P1Auth.Repository.UserAuthRepo;
+import com.SkillSwap.PeerToPeerLearning.P4testPortal.DTO.*;
+import com.SkillSwap.PeerToPeerLearning.P4testPortal.Entity.UserSkillTestEntity;
+import com.SkillSwap.PeerToPeerLearning.P4testPortal.Repository.UserSkillTestRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@Transactional
+@RequiredArgsConstructor
+@Slf4j
+public class TestPortalService {
+
+    private final UserAuthRepo userAuthRepo;
+    private final UserSkillTestRepository testRepository;
+    private final ObjectMapper objectMapper;
+
+    private static final int TOTAL_QUESTIONS = 15;
+    private static final int PASSING_SCORE = 10; // 67%
+    private static final long TEST_DURATION_MINUTES = 30;
+
+    public TestResponse generateTest(String email, GenerateTestRequest request) {
+        UserAuthEntity user = findUserByEmail(email);
+
+        // Already passed?
+        if (testRepository.existsByUser_IdAndSkillNameAndIsPassed(user.getId(), request.getSkillName(), true)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "You have already passed the test for this skill");
+        }
+
+        // Reuse pending/non-expired test
+        List<UserSkillTestEntity> pendingTests = testRepository.findByUser_IdAndTestStatusIn(
+                user.getId(), List.of("PENDING", "IN_PROGRESS"));
+
+        Optional<UserSkillTestEntity> existingTest = pendingTests.stream()
+                .filter(t -> t.getSkillName().equalsIgnoreCase(request.getSkillName()))
+                .findFirst();
+
+        if (existingTest.isPresent()) {
+            UserSkillTestEntity test = existingTest.get();
+            if (test.getTestExpiresAt() > System.currentTimeMillis()) {
+                return mapToTestResponse(test);
+            } else {
+                test.setTestStatus("EXPIRED");
+                testRepository.save(test);
+            }
+        }
+
+        // ---- Manual: no AI, pull from StaticQuestionBank ----
+        List<TestQuestion> questions;
+        try {
+            questions = StaticQuestionBank.getQuestionsOrThrow(request.getSkillName());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
+
+        if (questions.size() != TOTAL_QUESTIONS) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Static bank misconfigured: expected " + TOTAL_QUESTIONS + " questions");
+        }
+
+        UserSkillTestEntity testEntity = createTestEntity(user, request.getSkillName(), questions, "MANUAL");
+        testEntity = testRepository.save(testEntity);
+
+        return mapToTestResponse(testEntity);
+    }
+
+    public TestResultResponse submitTest(String email, SubmitTestRequest request) {
+        UserAuthEntity user = findUserByEmail(email);
+        UserSkillTestEntity test = testRepository.findByIdAndUser_Id(request.getTestId(), user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Test not found or does not belong to user"));
+
+        if (!test.getTestStatus().equals("PENDING") && !test.getTestStatus().equals("IN_PROGRESS")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Test has already been submitted or expired");
+        }
+
+        if (test.getTestExpiresAt() < System.currentTimeMillis()) {
+            test.setTestStatus("EXPIRED");
+            testRepository.save(test);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Test has expired");
+        }
+
+        if (request.getAnswers().size() != TOTAL_QUESTIONS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "All questions must be answered");
+        }
+
+        List<TestQuestion> questions = parseQuestionsJson(test.getQuestionsJson());
+        List<String> correctAnswers = parseAnswersJson(test.getAnswersJson());
+
+        int score = calculateScore(request.getAnswers(), correctAnswers);
+        boolean isPassed = score >= PASSING_SCORE;
+
+        test.setUserResponsesJson(serializeUserAnswers(request.getAnswers()));
+        test.setScore(score);
+        test.setIsPassed(isPassed);
+        test.setTestStatus("COMPLETED");
+        testRepository.save(test);
+
+        return buildTestResult(test, questions, request.getAnswers(), correctAnswers);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TestHistoryDto> getTestHistory(String email) {
+        UserAuthEntity user = findUserByEmail(email);
+        return testRepository.findByUser_IdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(this::mapToHistoryDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public TestResultResponse getTestResult(String email, Long testId) {
+        UserAuthEntity user = findUserByEmail(email);
+        UserSkillTestEntity test = testRepository.findByIdAndUser_Id(testId, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Test not found or does not belong to user"));
+
+        if (!test.getTestStatus().equals("COMPLETED")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Test has not been completed yet");
+        }
+
+        List<TestQuestion> questions = parseQuestionsJson(test.getQuestionsJson());
+        List<String> correctAnswers = parseAnswersJson(test.getAnswersJson());
+        List<UserAnswer> userAnswers = parseUserResponsesJson(test.getUserResponsesJson());
+
+        return buildTestResult(test, questions, userAnswers, correctAnswers);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isUserQualifiedForSkill(String email, String skillName) {
+        UserAuthEntity user = findUserByEmail(email);
+        return testRepository.existsByUser_IdAndSkillNameAndIsPassed(user.getId(), skillName, true);
+    }
+
+    // ===== Helpers =====
+
+    private UserAuthEntity findUserByEmail(String email) {
+        return userAuthRepo.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    private UserSkillTestEntity createTestEntity(UserAuthEntity user, String skillName,
+                                                 List<TestQuestion> questions, String provider) {
+        long expiryTime = System.currentTimeMillis() + (TEST_DURATION_MINUTES * 60 * 1000);
+
+        List<String> correctAnswers = questions.stream()
+                .map(TestQuestion::getCorrectAnswer)
+                .collect(Collectors.toList());
+
+        return UserSkillTestEntity.builder()
+                .user(user)
+                .skillName(skillName)
+                .difficultyLevel("HARD")
+                .questionsJson(serializeQuestions(questions))
+                .answersJson(serializeAnswers(correctAnswers))
+                .totalQuestions(TOTAL_QUESTIONS)
+                .passingScore(PASSING_SCORE)
+                .isPassed(false)
+                .testStatus("PENDING")
+                .testExpiresAt(expiryTime)
+                .aiProvider(provider) // will be "MANUAL"
+                .build();
+    }
+
+    private int calculateScore(List<UserAnswer> userAnswers, List<String> correctAnswers) {
+        int score = 0;
+        Map<Integer, String> answerMap = userAnswers.stream()
+                .collect(Collectors.toMap(UserAnswer::getQuestionNumber, UserAnswer::getSelectedAnswer));
+        for (int i = 0; i < correctAnswers.size(); i++) {
+            String userAnswer = answerMap.get(i + 1);
+            if (userAnswer != null && userAnswer.equalsIgnoreCase(correctAnswers.get(i))) {
+                score++;
+            }
+        }
+        return score;
+    }
+
+    private TestResultResponse buildTestResult(UserSkillTestEntity test, List<TestQuestion> questions,
+                                               List<UserAnswer> userAnswers, List<String> correctAnswers) {
+        Map<Integer, String> answerMap = userAnswers.stream()
+                .collect(Collectors.toMap(UserAnswer::getQuestionNumber, UserAnswer::getSelectedAnswer));
+
+        List<QuestionResult> questionResults = new ArrayList<>();
+        for (int i = 0; i < questions.size(); i++) {
+            TestQuestion q = questions.get(i);
+            String userAnswer = answerMap.getOrDefault(i + 1, "Not Answered");
+            String correctAnswer = correctAnswers.get(i);
+            boolean isCorrect = userAnswer.equalsIgnoreCase(correctAnswer);
+
+            questionResults.add(QuestionResult.builder()
+                    .questionNumber(q.getQuestionNumber())
+                    .question(q.getQuestion())
+                    .correctAnswer(correctAnswer)
+                    .userAnswer(userAnswer)
+                    .isCorrect(isCorrect)
+                    .build());
+        }
+
+        return TestResultResponse.builder()
+                .testId(test.getId())
+                .skillName(test.getSkillName())
+                .score(test.getScore())
+                .totalQuestions(test.getTotalQuestions())
+                .passingScore(test.getPassingScore())
+                .isPassed(test.getIsPassed())
+                .questionResults(questionResults)
+                .build();
+    }
+
+    private TestResponse mapToTestResponse(UserSkillTestEntity test) {
+        List<TestQuestion> questions = parseQuestionsJson(test.getQuestionsJson());
+
+        List<QuestionDto> questionDtos = questions.stream()
+                .map(q -> QuestionDto.builder()
+                        .questionNumber(q.getQuestionNumber())
+                        .question(q.getQuestion())
+                        .options(q.getOptions())
+                        .build())
+                .collect(Collectors.toList());
+
+        return TestResponse.builder()
+                .testId(test.getId())
+                .skillName(test.getSkillName())
+                .totalQuestions(test.getTotalQuestions())
+                .passingScore(test.getPassingScore())
+                .questions(questionDtos)
+                .expiresAt(test.getTestExpiresAt())
+                .testStatus(test.getTestStatus())
+                .build();
+    }
+
+    // ===== JSON (de)serialization =====
+
+    private String serializeQuestions(List<TestQuestion> questions) {
+        try {
+            return objectMapper.writeValueAsString(questions);
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to serialize questions");
+        }
+    }
+
+    private String serializeAnswers(List<String> answers) {
+        try {
+            return objectMapper.writeValueAsString(answers);
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to serialize answers");
+        }
+    }
+
+    private String serializeUserAnswers(List<UserAnswer> answers) {
+        try {
+            return objectMapper.writeValueAsString(answers);
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to serialize user answers");
+        }
+    }
+
+    private List<TestQuestion> parseQuestionsJson(String json) {
+        try {
+            return objectMapper.readValue(json,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, TestQuestion.class));
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to parse questions JSON");
+        }
+    }
+
+    private List<String> parseAnswersJson(String json) {
+        try {
+            return objectMapper.readValue(json,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to parse answers JSON");
+        }
+    }
+
+    private List<UserAnswer> parseUserResponsesJson(String json) {
+        try {
+            return objectMapper.readValue(json,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, UserAnswer.class));
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to parse user responses JSON");
+        }
+    }
+
+    private TestHistoryDto mapToHistoryDto(UserSkillTestEntity test) {
+        return TestHistoryDto.builder()
+                .testId(test.getId())
+                .skillName(test.getSkillName())
+                .score(test.getScore())
+                .totalQuestions(test.getTotalQuestions())
+                .isPassed(test.getIsPassed())
+                .testStatus(test.getTestStatus())
+                .createdAt(test.getCreatedAt().toString())
+                .build();
+    }
+}

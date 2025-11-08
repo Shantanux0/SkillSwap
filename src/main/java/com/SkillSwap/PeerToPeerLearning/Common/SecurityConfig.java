@@ -24,6 +24,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 import java.util.List;
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -38,7 +39,7 @@ public class SecurityConfig {
         http.cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Public Endpoints (Adjust according to actual path in controllers)
+                        // Public Endpoints
                         .requestMatchers("/login", "/register",
                                 "/send-reset-otp", "/reset-password",
                                 "/logout", "/send-otp", "/verify-otp")
@@ -47,8 +48,11 @@ public class SecurityConfig {
                         // Profile Module
                         .requestMatchers("/api/profile/**").authenticated()
 
-                        // Resume Module (NEW)
+                        // Resume Module
                         .requestMatchers("/api/resume/**").authenticated()
+
+                        // Test Portal Module (NEW)
+                        .requestMatchers("/api/test/**").authenticated()
 
                         // Any other endpoints
                         .anyRequest().authenticated()
@@ -59,10 +63,7 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(customAuthenticationEntryPoint));
 
         return http.build();
-
-
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -93,5 +94,4 @@ public class SecurityConfig {
         authenticationProvider.setPasswordEncoder(passwordEncoder());
         return new ProviderManager(authenticationProvider);
     }
-
 }
