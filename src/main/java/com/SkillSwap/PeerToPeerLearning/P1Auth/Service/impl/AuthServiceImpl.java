@@ -89,6 +89,8 @@ public class AuthServiceImpl implements ProfileService {
         existingUser.setResetOtp(null);
         existingUser.setResetOtpExpireAt(0L);
 
+        // After saving new password
+        emailService.sendPasswordChangedEmail(email);
         userAuthRepo.save(existingUser);
 
 

@@ -24,6 +24,27 @@ public class EmailService {
                javaMailSender.send(message);
 
     }
+    public void sendPasswordChangedEmail(String toEmail) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("⚠️ Password Changed Successfully");
+
+        // Get current time
+        String dateTime = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss"));
+
+        message.setText(
+                "Hello,\n\n" +
+                        "Your password was successfully changed on: " + dateTime + "\n\n" +
+                        "⚠️ If you did not perform this action, please contact our support team immediately or reset your password again.\n\n" +
+                        "Stay secure,\n" +
+                        "SkillSwap Team"
+        );
+
+        javaMailSender.send(message);
+    }
+
 
     public void sendResetOtpEmail(String toEmail,String otp ){
         SimpleMailMessage message= new SimpleMailMessage();
