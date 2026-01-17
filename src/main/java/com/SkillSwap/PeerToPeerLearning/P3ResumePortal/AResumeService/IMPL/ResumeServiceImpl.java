@@ -45,22 +45,26 @@ public class ResumeServiceImpl implements ResumeService {
     // --- Authorization Helpers: Finds Entity by ID and User ID or throws 404 ---
     private CertificationEntity findCertificationByIdAndUser(Long id, Long userId) {
         return certificationRepository.findByIdAndUser_Id(id, userId).stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Certification not found or does not belong to user."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Certification not found or does not belong to user."));
     }
 
     private CodingStatEntity findCodingStatByIdAndUser(Long id, Long userId) {
         return codingStatRepository.findByIdAndUser_Id(id, userId).stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coding stat not found or does not belong to user."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Coding stat not found or does not belong to user."));
     }
 
     private ExperienceEntity findExperienceByIdAndUser(Long id, Long userId) {
         return experienceRepository.findByIdAndUser_Id(id, userId).stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Experience not found or does not belong to user."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Experience not found or does not belong to user."));
     }
 
     private EducationEntity findEducationByIdAndUser(Long id, Long userId) {
         return educationRepository.findByIdAndUser_Id(id, userId).stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Education entry not found or does not belong to user."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Education entry not found or does not belong to user."));
     }
 
     // --- 1. Certification CRUD Implementations ---
@@ -248,7 +252,6 @@ public class ResumeServiceImpl implements ResumeService {
         educationRepository.delete(entity);
     }
 
-
     // --- Mapper methods (Moved to bottom for clarity) ---
 
     private CertificationDto mapToDto(CertificationEntity entity) {
@@ -260,7 +263,28 @@ public class ResumeServiceImpl implements ResumeService {
                 .issueDate(entity.getIssueDate())
                 .expirationDate(entity.getExpirationDate())
                 .proofUrl(entity.getProofUrl())
+                .credibilityScore(
+                        calculateCertificationCredibility(entity.getIssuingOrganization(), entity.getProofUrl()))
                 .build();
+    }
+
+    private Double calculateCertificationCredibility(String issuer, String proofUrl) {
+        double score = 0.5; // Base score
+        if (issuer != null) {
+            String lowerIssuer = issuer.toLowerCase();
+            if (lowerIssuer.contains("spring") || lowerIssuer.contains("oracle") || lowerIssuer.contains("aws")
+                    || lowerIssuer.contains("google") || lowerIssuer.contains("microsoft")) {
+                score = 0.9;
+            } else if (lowerIssuer.contains("udemy") || lowerIssuer.contains("coursera") || lowerIssuer.contains("edx")
+                    || lowerIssuer.contains("pluralsight")) {
+                score = 0.7;
+            }
+        }
+        // Verification bonus
+        if (proofUrl != null && !proofUrl.isBlank()) {
+            score += 0.1;
+        }
+        return Math.min(score, 1.0);
     }
 
     private CertificationEntity mapToEntity(CertificationDto dto) {

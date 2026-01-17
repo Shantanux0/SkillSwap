@@ -148,6 +148,20 @@ public class TestPortalService {
         return testRepository.existsByUser_IdAndSkillNameAndIsPassed(user.getId(), skillName, true);
     }
 
+    @Transactional(readOnly = true)
+    public Double getBestTestScore(Long userId, String skillName) {
+        // Find all completed tests for this user and skill
+        // This is a bit inefficient if there are many retries, but acceptable for now
+        // Ideally we'd have a custom query
+        List<UserSkillTestEntity> tests = testRepository.findByUser_IdAndTestStatusIn(userId, List.of("COMPLETED"));
+
+        return tests.stream()
+                .filter(t -> t.getSkillName().equalsIgnoreCase(skillName))
+                .mapToDouble(t -> (double) t.getScore() / t.getTotalQuestions())
+                .max()
+                .orElse(0.0);
+    }
+
     // ===== Helpers =====
 
     private UserAuthEntity findUserByEmail(String email) {
@@ -156,7 +170,7 @@ public class TestPortalService {
     }
 
     private UserSkillTestEntity createTestEntity(UserAuthEntity user, String skillName,
-                                                 List<TestQuestion> questions, String provider) {
+            List<TestQuestion> questions, String provider) {
         long expiryTime = System.currentTimeMillis() + (TEST_DURATION_MINUTES * 60 * 1000);
 
         List<String> correctAnswers = questions.stream()
@@ -192,7 +206,7 @@ public class TestPortalService {
     }
 
     private TestResultResponse buildTestResult(UserSkillTestEntity test, List<TestQuestion> questions,
-                                               List<UserAnswer> userAnswers, List<String> correctAnswers) {
+            List<UserAnswer> userAnswers, List<String> correctAnswers) {
         Map<Integer, String> answerMap = userAnswers.stream()
                 .collect(Collectors.toMap(UserAnswer::getQuestionNumber, UserAnswer::getSelectedAnswer));
 

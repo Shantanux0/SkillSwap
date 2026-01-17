@@ -36,4 +36,7 @@ public class CertificationDto {
     @NotBlank(message = "Proof URL is required")
     @Size(max = 500, message = "Proof URL is too long")
     private String proofUrl;
+
+    // Calculated field, not stored in DB
+    private Double credibilityScore;
 }

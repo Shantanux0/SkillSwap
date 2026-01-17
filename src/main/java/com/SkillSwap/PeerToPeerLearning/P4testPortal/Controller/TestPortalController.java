@@ -14,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/test")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true") // frontend port optional update
+
 public class TestPortalController {
 
     private final TestPortalService testPortalService;

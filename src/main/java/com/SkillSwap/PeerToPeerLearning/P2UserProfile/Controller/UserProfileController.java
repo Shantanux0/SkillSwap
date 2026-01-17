@@ -20,7 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/profile")
-@CrossOrigin(origins = "http://localhost:8080", allowCredentials = "true")
+
 public class UserProfileController {
 
     @Autowired
