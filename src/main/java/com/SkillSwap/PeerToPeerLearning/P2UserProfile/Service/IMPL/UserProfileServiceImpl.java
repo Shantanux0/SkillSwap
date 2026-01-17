@@ -100,6 +100,23 @@ public class UserProfileServiceImpl implements UserProfileService {
         profile.setGithubUrl(dto.getGithubUrl());
         profile.setSkills(dto.getSkills());
         profile.setInterests(dto.getInterests());
+
+        // NEW MATCHING FIELDS
+        profile.setSkillsToLearn(dto.getSkillsToLearn());
+        profile.setTimezone(dto.getTimezone());
+        profile.setHoursPerWeek(dto.getHoursPerWeek());
+        profile.setAvailabilitySchedule(dto.getAvailabilitySchedule());
+        profile.setLearningGoal(dto.getLearningGoal());
+        profile.setGoalTimeline(dto.getGoalTimeline());
+        profile.setTeachingMotivation(dto.getTeachingMotivation());
+        profile.setTeachingApproach(dto.getTeachingApproach());
+        profile.setPreferredLearningMethod(dto.getPreferredLearningMethod());
+        profile.setCommunicationPace(dto.getCommunicationPace());
+        profile.setPreferredLanguage(dto.getPreferredLanguage());
+        profile.setDomainFocus(dto.getDomainFocus());
+
+        // Calculate profile completeness
+        profile.setProfileCompletenessScore(calculateProfileCompleteness(profile));
     }
 
     private UserProfileResponseDto mapToResponseDto(UserProfileEntity profile) {
@@ -121,7 +138,85 @@ public class UserProfileServiceImpl implements UserProfileService {
         dto.setVerified(profile.getUser().getIsAccountVerified());
         dto.setCreatedAt(profile.getCreatedAt());
         dto.setUpdatedAt(profile.getUpdatedAt());
+
+        // NEW MATCHING FIELDS
+        dto.setSkillsToLearn(profile.getSkillsToLearn());
+        dto.setTimezone(profile.getTimezone());
+        dto.setHoursPerWeek(profile.getHoursPerWeek());
+        dto.setAvailabilitySchedule(profile.getAvailabilitySchedule());
+        dto.setLearningGoal(profile.getLearningGoal());
+        dto.setGoalTimeline(profile.getGoalTimeline());
+        dto.setTeachingMotivation(profile.getTeachingMotivation());
+        dto.setTeachingApproach(profile.getTeachingApproach());
+        dto.setPreferredLearningMethod(profile.getPreferredLearningMethod());
+        dto.setCommunicationPace(profile.getCommunicationPace());
+        dto.setPreferredLanguage(profile.getPreferredLanguage());
+        dto.setDomainFocus(profile.getDomainFocus());
+        dto.setProfileCompletenessScore(profile.getProfileCompletenessScore());
+
         return dto;
+    }
+
+    /**
+     * Calculate profile completeness score (0-100)
+     */
+    private int calculateProfileCompleteness(UserProfileEntity profile) {
+        int totalFields = 26; // Total optional fields
+        int filledFields = 0;
+
+        // Required fields (3)
+        if (profile.getFirstName() != null && !profile.getFirstName().isBlank())
+            filledFields++;
+        if (profile.getLastName() != null && !profile.getLastName().isBlank())
+            filledFields++;
+        if (profile.getSkills() != null && !profile.getSkills().isBlank())
+            filledFields++;
+
+        // Optional fields (23)
+        if (profile.getBio() != null && !profile.getBio().isBlank())
+            filledFields++;
+        if (profile.getProfileImageUrl() != null)
+            filledFields++;
+        if (profile.getDateOfBirth() != null)
+            filledFields++;
+        if (profile.getPhoneNumber() != null)
+            filledFields++;
+        if (profile.getLocation() != null)
+            filledFields++;
+        if (profile.getWebsite() != null)
+            filledFields++;
+        if (profile.getLinkedinUrl() != null)
+            filledFields++;
+        if (profile.getGithubUrl() != null)
+            filledFields++;
+        if (profile.getInterests() != null)
+            filledFields++;
+        if (profile.getSkillsToLearn() != null)
+            filledFields++;
+        if (profile.getTimezone() != null)
+            filledFields++;
+        if (profile.getHoursPerWeek() != null)
+            filledFields++;
+        if (profile.getAvailabilitySchedule() != null)
+            filledFields++;
+        if (profile.getLearningGoal() != null)
+            filledFields++;
+        if (profile.getGoalTimeline() != null)
+            filledFields++;
+        if (profile.getTeachingMotivation() != null)
+            filledFields++;
+        if (profile.getTeachingApproach() != null)
+            filledFields++;
+        if (profile.getPreferredLearningMethod() != null)
+            filledFields++;
+        if (profile.getCommunicationPace() != null)
+            filledFields++;
+        if (profile.getPreferredLanguage() != null)
+            filledFields++;
+        if (profile.getDomainFocus() != null)
+            filledFields++;
+
+        return (int) ((filledFields / (double) totalFields) * 100);
     }
 
 }

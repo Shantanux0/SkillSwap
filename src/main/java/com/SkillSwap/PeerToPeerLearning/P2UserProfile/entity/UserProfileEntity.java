@@ -59,6 +59,53 @@ public class UserProfileEntity {
     @Column(name = "interests")
     private String interests; // JSON string or comma-separated
 
+    // NEW FIELDS FOR ENHANCED MATCHING
+
+    // Skills to Learn
+    @Column(name = "skills_to_learn", length = 1000)
+    private String skillsToLearn; // What I want to learn
+
+    // Scheduling
+    @Column(name = "timezone", length = 50)
+    private String timezone; // e.g., "America/New_York", "Asia/Kolkata"
+
+    @Column(name = "hours_per_week")
+    private Integer hoursPerWeek; // Available hours per week
+
+    @Column(name = "availability_schedule", columnDefinition = "TEXT")
+    private String availabilitySchedule; // JSON: {"Mon": ["9-12", "18-21"], "Tue": ["14-18"]}
+
+    // Goals
+    @Column(name = "learning_goal", length = 50)
+    private String learningGoal; // JOB_PREP, CAREER_SWITCH, PERSONAL_PROJECT, EXPLORATION
+
+    @Column(name = "goal_timeline", length = 20)
+    private String goalTimeline; // URGENT, MEDIUM, FLEXIBLE, CASUAL
+
+    // Teaching
+    @Column(name = "teaching_motivation", length = 50)
+    private String teachingMotivation; // LOVE_TEACHING, REINFORCE_KNOWLEDGE, BUILD_REPUTATION, NETWORKING
+
+    @Column(name = "teaching_approach", length = 100)
+    private String teachingApproach; // STEP_BY_STEP, PROJECT_BASED, PROBLEM_SOLVING, CONCEPT_FIRST
+
+    // Learning Preferences
+    @Column(name = "preferred_learning_method", length = 100)
+    private String preferredLearningMethod; // VIDEO_CALL, SCREEN_SHARE, PAIR_PROGRAMMING, CODE_REVIEW, ASYNC
+
+    @Column(name = "communication_pace", length = 20)
+    private String communicationPace; // FAST, MODERATE, SLOW
+
+    // Matching
+    @Column(name = "preferred_language", length = 50)
+    private String preferredLanguage; // English, Spanish, Hindi, etc.
+
+    @Column(name = "domain_focus", length = 200)
+    private String domainFocus; // WEB_DEV, MOBILE_DEV, DATA_SCIENCE, DEVOPS, GAME_DEV
+
+    @Column(name = "profile_completeness_score")
+    private Integer profileCompletenessScore; // 0-100
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

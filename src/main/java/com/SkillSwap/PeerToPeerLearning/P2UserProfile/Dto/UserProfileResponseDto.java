@@ -25,4 +25,32 @@ public class UserProfileResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // NEW FIELDS FOR ENHANCED MATCHING
+    private String skillsToLearn;
+
+    // Scheduling
+    private String timezone;
+    private Integer hoursPerWeek;
+    private String availabilitySchedule;
+
+    // Goals
+    private String learningGoal;
+    private String goalTimeline;
+
+    // Teaching
+    private String teachingMotivation;
+    private String teachingApproach;
+
+    // Learning Preferences
+    private String preferredLearningMethod;
+    private String communicationPace;
+
+    // Matching
+    private String preferredLanguage;
+    private String domainFocus;
+    private Integer profileCompletenessScore;
+
+    // Skill proficiency details
+    private java.util.List<SkillLevelDto> skillLevels;
+
 }

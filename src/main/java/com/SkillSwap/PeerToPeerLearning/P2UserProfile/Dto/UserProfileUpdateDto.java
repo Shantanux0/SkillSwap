@@ -8,6 +8,7 @@ import lombok.Data;
 import org.hibernate.validator.constraints.URL;
 
 import java.time.LocalDate;
+
 @Data
 // Request DTO for profile updates
 public class UserProfileUpdateDto {
@@ -44,6 +45,28 @@ public class UserProfileUpdateDto {
     private String skills;
     private String interests;
 
+    // NEW FIELDS FOR ENHANCED MATCHING (all optional)
+    private String skillsToLearn;
+
+    // Scheduling
+    private String timezone;
+    private Integer hoursPerWeek;
+    private String availabilitySchedule; // JSON format
+
+    // Goals
+    private String learningGoal; // JOB_PREP, CAREER_SWITCH, PERSONAL_PROJECT, EXPLORATION
+    private String goalTimeline; // URGENT, MEDIUM, FLEXIBLE, CASUAL
+
+    // Teaching
+    private String teachingMotivation; // LOVE_TEACHING, REINFORCE_KNOWLEDGE, BUILD_REPUTATION, NETWORKING
+    private String teachingApproach; // STEP_BY_STEP, PROJECT_BASED, PROBLEM_SOLVING, CONCEPT_FIRST
+
+    // Learning Preferences
+    private String preferredLearningMethod; // VIDEO_CALL, SCREEN_SHARE, PAIR_PROGRAMMING, CODE_REVIEW, ASYNC
+    private String communicationPace; // FAST, MODERATE, SLOW
+
+    // Matching
+    private String preferredLanguage;
+    private String domainFocus; // WEB_DEV, MOBILE_DEV, DATA_SCIENCE, DEVOPS, GAME_DEV
 
 }
-

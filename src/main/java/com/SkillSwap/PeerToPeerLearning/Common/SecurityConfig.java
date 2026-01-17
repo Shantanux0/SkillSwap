@@ -42,7 +42,8 @@ public class SecurityConfig {
                         // Public Endpoints
                         .requestMatchers("/login", "/register",
                                 "/send-reset-otp", "/reset-password",
-                                "/logout", "/send-otp", "/verify-otp")
+                                "/logout", "/send-otp", "/verify-otp",
+                                "/is-authenticated")
                         .permitAll()
 
                         // Profile Module
