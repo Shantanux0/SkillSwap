@@ -24,7 +24,7 @@ The server will start on **port 8080**.
 
 ## 📚 API Documentation (Crucial!)
 We have created a **Master Postman Documentation** file for you.
-👉 **[postman_documentation.md](./postman_documentation.md)**
+👉 **[postman_documentation.md](./postman_documentation.md)** | **[Download PDF Version](./SkillSwap%20Postman%20API%20Documentation.pdf)**
 
 **Recommendation:** Import this structure into Postman to test endpoints immediately. It contains pre-configured requests for every feature below.
 
